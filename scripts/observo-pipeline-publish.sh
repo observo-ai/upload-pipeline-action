@@ -328,28 +328,98 @@ if (( tagged_count > 0 )); then
 fi
 
 # -------------------------------------------------------------------------
-# Coverage attachment upload (best-effort, one per layer)
+# Per-layer attachments — upload junit + coverage.lcov + coverage.html,
+# capture each attachment.id from the server response, splice the IDs
+# back into the aggregated_layers JSON so the final PATCH below carries
+# them. v1.0.1: this is the chain that activates "Open HTML report" /
+# "Download LCOV" / junit links inside the Observo dashboard's
+# PipelineLayersPanel detail view. v1.0.0 dropped the response on the
+# floor and the IDs were never persisted.
 # -------------------------------------------------------------------------
 
-while IFS= read -r layer_obj; do
-    lcov=$(jq -r '.coverage.lcov // ""' <<<"$layer_obj")
-    html=$(jq -r '.coverage.html // ""' <<<"$layer_obj")
-    id=$(jq -r '.id' <<<"$layer_obj")
-
-    for f in "$lcov" "$html"; do
-        [[ -z "$f" ]] && continue
-        if [[ ! -f "$f" ]]; then
-            echo "::warning::Layer '$id': coverage file '$f' not found — skipping upload"
-            continue
-        fi
-        curl -sS -L -X POST \
+# Helper: POST a single file to the attachments endpoint, return the
+# attachment.id on stdout (empty string on any failure). Caller decides
+# whether an empty result is fatal; we treat attachment uploads as
+# best-effort enrichment.
+upload_attachment() {
+    local file=$1
+    local resp
+    if ! resp=$(curl -sS -L -X POST \
             -H "Authorization: Bearer $OBSERVO_API_KEY" \
-            -F "file=@$f" \
+            -F "file=@$file" \
             -F "run_id=$run_id" \
-            "$OBSERVO_BASE_URL/api/projects/$project_id_enc/attachments:upload" \
-            >/dev/null || echo "::warning::Coverage upload failed for layer '$id' file '$f'"
-    done
+            "$OBSERVO_BASE_URL/api/projects/$project_id_enc/attachments:upload"); then
+        return 1
+    fi
+    jq -r '.attachment.id // empty' <<<"$resp"
+}
+
+while IFS= read -r layer_obj; do
+    id=$(jq -r '.id' <<<"$layer_obj")
+    junit_path=$(jq -r '.junit // ""' <<<"$layer_obj")
+    lcov_path=$(jq -r '.coverage.lcov // ""' <<<"$layer_obj")
+    html_path=$(jq -r '.coverage.html // ""' <<<"$layer_obj")
+
+    junit_id=""
+    lcov_id=""
+    html_id=""
+
+    # JUnit: v1.0.0 already parsed this file for aggregates; uploading
+    # the raw XML lets operators download it from the dashboard for
+    # offline triage of failures.
+    if [[ -n "$junit_path" && -f "$junit_path" ]]; then
+        if ! junit_id=$(upload_attachment "$junit_path"); then
+            echo "::warning::Layer '$id': junit upload failed"
+            junit_id=""
+        fi
+    fi
+
+    if [[ -n "$lcov_path" ]]; then
+        if [[ -f "$lcov_path" ]]; then
+            if ! lcov_id=$(upload_attachment "$lcov_path"); then
+                echo "::warning::Layer '$id': lcov upload failed"
+                lcov_id=""
+            fi
+        else
+            echo "::warning::Layer '$id': lcov file '$lcov_path' not found — skipping"
+        fi
+    fi
+
+    if [[ -n "$html_path" ]]; then
+        if [[ -f "$html_path" ]]; then
+            if ! html_id=$(upload_attachment "$html_path"); then
+                echo "::warning::Layer '$id': html upload failed"
+                html_id=""
+            fi
+        else
+            echo "::warning::Layer '$id': html file '$html_path' not found — skipping"
+        fi
+    fi
+
+    # Splice the captured IDs into the matching layer in aggregated_layers.
+    # `coverage //= {}` creates the nested object on demand — v1.0.0's
+    # aggregation step omits it entirely, so we add it here when any
+    # coverage attachment landed.
+    if [[ -n "$junit_id" || -n "$lcov_id" || -n "$html_id" ]]; then
+        aggregated_layers=$(jq -c \
+            --arg id "$id" \
+            --arg j "$junit_id" \
+            --arg l "$lcov_id" \
+            --arg h "$html_id" \
+            'map(if .id == $id then
+                    (if $j != "" then .junit_attachment_id = $j else . end)
+                    | (if $l != "" then (.coverage //= {}) | .coverage.lcov_attachment_id = $l else . end)
+                    | (if $h != "" then (.coverage //= {}) | .coverage.html_attachment_id = $h else . end)
+                 else . end)' <<<"$aggregated_layers")
+    fi
 done < <(jq -c '.[]' <<<"$layers_json")
+
+# Rebuild pipeline_payload from the (now ID-enriched) aggregated_layers
+# so the final PATCH below carries them. Server PATCH semantics replace
+# the pipeline column wholesale, so we must re-send the full structure.
+pipeline_payload=$(jq -c \
+    --argjson layers "$aggregated_layers" \
+    '.layers = $layers' <<<"$pipeline_payload")
 
 # -------------------------------------------------------------------------
 # Final status PATCH — close the run with passed/failed + finished_at

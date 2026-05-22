@@ -297,6 +297,24 @@ uses: observo-ai/upload-pipeline-action@v1
 
 `@v1` always points at the latest 1.x release.
 
+### CHANGELOG
+
+**v1.0.1** — Backfill attachment IDs into the pipeline metadata.
+`scripts/observo-pipeline-publish.sh` now captures the `attachment.id`
+returned from `POST /attachments:upload` for each layer's junit XML,
+LCOV file, and HTML coverage report, then splices the IDs into the
+final pipeline PATCH. This activates the **"Open HTML report" /
+"Download LCOV" / JUnit attachment** links in the Observo dashboard's
+`PipelineLayersPanel` expand view — v1.0.0 uploaded the files but
+discarded the response, so the links never resolved. Drop-in upgrade,
+no workflow YAML changes required (the input schema is unchanged).
+JUnit XML is now uploaded as an attachment too (v1.0.0 only parsed
+it for aggregates).
+
+**v1.0.0** — Initial release. JUnit aggregator + CreateRun + per-case
+PATCH for `@observo:CODE` tagged tests + coverage attachment upload
+(without ID backfill — see v1.0.1).
+
 ## License
 
 MIT — see `LICENSE`.
