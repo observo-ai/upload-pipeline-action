@@ -1,8 +1,16 @@
 # observo-ai/upload-pipeline-action
 
+[![Used in production](https://img.shields.io/badge/used%20in%20production-observo--ai%2Fobservo-blue)](https://github.com/yatsinaba/observo/blob/main/.github/workflows/observo-pipeline.yml)
+[![Onboarding spec](https://img.shields.io/badge/docs-onboarding-blueviolet)](https://github.com/yatsinaba/observo/blob/main/kb-observo/04-Product/Specs/Pipeline-Onboarding.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Publish per-layer JUnit results — plus optional coverage attachments and
 per-case status — to [Observo](https://observoai.co) as a single
 pipeline TestRun. One YAML step in your GitHub workflow.
+
+> **Production-tested:** Observo itself ships every push to main through
+> this Action via [`observo-pipeline.yml`](https://github.com/yatsinaba/observo/blob/main/.github/workflows/observo-pipeline.yml).
+> If we ate our own dog food, you can probably trust the food.
 
 ```yaml
 - uses: observo-ai/upload-pipeline-action@v1
@@ -246,6 +254,25 @@ You can't — a pipeline run is a snapshot. Add the layer to your
 `layers:` block in the workflow; the next pipeline run will include it.
 Layers added retroactively to Observo by hand (via UI) are out of scope
 for this Action.
+
+---
+
+## Screenshots
+
+> _Placeholders below — replaced with real captures once an authenticated
+> Observo demo project has enough pipeline runs to populate the views.
+> Track at OB-329._
+
+**Pipelines list page** — paginated table of pipeline TestRuns, branch +
+short SHA columns, "Latest pipeline" widget on top.
+
+![Pipelines list page](docs/screenshots/pipelines-list.png)
+
+**Drill-down — TestRunPage with PipelineLayersPanel** — N layer cards
+rendered from the run's metadata, framework icons, progress bars
+coloured by outcome, optional coverage delta.
+
+![Pipeline layers panel](docs/screenshots/pipeline-layers-panel.png)
 
 ---
 
