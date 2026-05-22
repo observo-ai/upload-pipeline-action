@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- gotestsum --junitfile output, all green. Note `bare` testsuite root
-     without a wrapping <testsuites> — both layouts are valid junit. -->
+<!-- gotestsum (junitfile mode) output, all green. Note the bare testsuite
+     root without a wrapping testsuites element — both layouts are valid
+     JUnit and the parser must handle both. -->
 <testsuite name="server/util" tests="4" failures="0" errors="0" time="0.221">
   <properties>
     <property name="go.version" value="go1.24" />
