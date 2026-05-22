@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vitest junit reporter — typical mixed-result shape -->
+<testsuites name="vitest tests" tests="5" failures="1" errors="0" time="2.341">
+  <testsuite name="src/util/auth.ts" tests="3" failures="0" errors="0" skipped="0" time="0.456">
+    <testcase classname="auth" name="parses a valid token" time="0.123" />
+    <testcase classname="auth" name="rejects an expired token" time="0.234" />
+    <testcase classname="auth" name="@observo:DEMO-1 stores in session" time="0.099" />
+  </testsuite>
+  <testsuite name="src/util/fetch.ts" tests="2" failures="1" errors="0" skipped="0" time="1.885">
+    <testcase classname="fetch" name="happy path GET" time="0.444" />
+    <testcase classname="fetch" name="@observo:DEMO-2 retries on 503" time="1.441">
+      <failure type="AssertionError" message="expected 2 retries, got 0">
+expected 2
+actual 0
+      </failure>
+    </testcase>
+  </testsuite>
+</testsuites>

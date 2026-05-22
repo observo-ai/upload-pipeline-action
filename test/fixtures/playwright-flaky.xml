@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Playwright junit reporter — includes a flaky retry case -->
+<testsuites name="Playwright Tests" tests="3" failures="0" errors="0" skipped="0" time="14.222">
+  <testsuite name="login.spec.ts" tests="3" failures="0" errors="0" skipped="1" time="14.222">
+    <testcase name="login.spec.ts &gt; happy path login" classname="chromium" time="3.421" />
+    <testcase name="login.spec.ts &gt; password reset @observo:DEMO-7" classname="chromium" time="9.001" retries="1">
+      <properties>
+        <property name="flaky" value="true" />
+      </properties>
+    </testcase>
+    <testcase name="login.spec.ts &gt; sso login (manual only)" classname="chromium" time="1.800">
+      <skipped />
+    </testcase>
+  </testsuite>
+</testsuites>

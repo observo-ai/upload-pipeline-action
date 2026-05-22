@@ -1,0 +1,114 @@
+# OB-324: observo-ai/upload-pipeline-action — v1.0.0
+#
+# Parses per-layer JUnit XML, aggregates pass/fail/skipped/flaky/duration,
+# and publishes a single Observo pipeline TestRun via /api/projects/{id}/runs.
+# Generic over N test layers — clients declare their stack via the `layers`
+# multiline YAML input.
+#
+# Source of truth lives in observo-ai/upload-pipeline-action; the file you're
+# reading was first developed inside yatsinaba/observo:_external/ during
+# OB-324 and copied here verbatim at v1.0.0.
+
+name: "Observo — Upload Pipeline"
+description: "Publish per-layer JUnit results + coverage to Observo as a single pipeline TestRun."
+author: "Observo (https://observoai.co)"
+
+branding:
+  icon: "upload-cloud"
+  color: "blue"
+
+inputs:
+  api-key:
+    description: "Observo account-scoped API key. Pass via secrets, e.g. ${{ secrets.OBSERVO_API_KEY }}."
+    required: true
+  project-id:
+    description: "Observo project UUID OR short project code (e.g. DEMO). Both accepted server-side."
+    required: true
+  base-url:
+    description: "Observo API base URL. Override only for self-hosted / staging environments."
+    required: false
+    default: "https://api.observoai.co"
+
+  # Pipeline metadata — sensible defaults pulled from the GitHub context;
+  # override per-step if you need to attribute differently.
+  run-name:
+    description: "Human-readable run name. Defaults to the head commit message."
+    required: false
+    default: ""
+  commit-sha:
+    description: "Commit SHA being tested. Defaults to GITHUB_SHA."
+    required: false
+    default: ""
+  branch:
+    description: "Branch ref name. Defaults to GITHUB_REF_NAME."
+    required: false
+    default: ""
+  pr-url:
+    description: "Pull request URL when triggered by a PR. Defaults to event.pull_request.html_url."
+    required: false
+    default: ""
+  actor:
+    description: "User who triggered the workflow. Defaults to GITHUB_ACTOR."
+    required: false
+    default: ""
+  ci-run-url:
+    description: "Link back to the CI run. Defaults to GITHUB_SERVER_URL/REPOSITORY/actions/runs/RUN_ID."
+    required: false
+    default: ""
+
+  layers:
+    description: |
+      Multi-line YAML describing each test layer. One block per layer:
+
+        - id: frontend-unit
+          display_name: Frontend (Vitest)
+          framework: vitest
+          junit: web-portal/junit.xml
+          coverage:                 # optional
+            lcov: web-portal/coverage/lcov.info
+            html: web-portal/coverage/index.html
+
+      `id` must be unique across layers. `framework` is free-form and only
+      used for icon hints in the UI. `junit` is required for the layer to
+      contribute aggregates.
+    required: true
+
+  fail-on-test-fail:
+    description: |
+      When "true", the action exits non-zero if any layer has test failures.
+      Default "false" — report-only, never gates the GitHub status check.
+      Reason: pipelines are most useful when they always run; gating on a
+      flake stops the whole report from landing.
+    required: false
+    default: "false"
+
+outputs:
+  run-id:
+    description: "UUID of the created Observo TestRun."
+    value: ${{ steps.publish.outputs.run-id }}
+  run-url:
+    description: "Web URL to view the run in Observo."
+    value: ${{ steps.publish.outputs.run-url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Publish pipeline run
+      id: publish
+      shell: bash
+      env:
+        # Pass action inputs through INPUT_* env vars — entrypoint.sh reads them.
+        # This shape matches the convention used by JS / Docker actions, so a
+        # future migration to a node20 action is a drop-in switch.
+        INPUT_API_KEY: ${{ inputs.api-key }}
+        INPUT_PROJECT_ID: ${{ inputs.project-id }}
+        INPUT_BASE_URL: ${{ inputs.base-url }}
+        INPUT_RUN_NAME: ${{ inputs.run-name }}
+        INPUT_COMMIT_SHA: ${{ inputs.commit-sha }}
+        INPUT_BRANCH: ${{ inputs.branch }}
+        INPUT_PR_URL: ${{ inputs.pr-url }}
+        INPUT_ACTOR: ${{ inputs.actor }}
+        INPUT_CI_RUN_URL: ${{ inputs.ci-run-url }}
+        INPUT_LAYERS: ${{ inputs.layers }}
+        INPUT_FAIL_ON_TEST_FAIL: ${{ inputs.fail-on-test-fail }}
+      run: ${{ github.action_path }}/entrypoint.sh

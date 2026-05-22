@@ -1,0 +1,42 @@
+# Self-test for observo-ai/upload-pipeline-action.
+#
+# Two jobs:
+#   1. bats — runs the parse-junit unit suite against fixtures.
+#   2. shellcheck — lints entrypoint.sh + scripts/*.sh.
+#
+# Both are required for the v1 quality bar.
+
+name: Action self-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats + jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bats jq
+
+      - name: Run parse-junit unit tests
+        run: bats test/
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: "."
+          # The Python files trip the default shellcheck scan; restrict
+          # to actual shell sources.
+          ignore_paths: "scripts/parse-junit.py"

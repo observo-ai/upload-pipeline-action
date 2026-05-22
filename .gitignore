@@ -1,0 +1,11 @@
+# Editor cruft
+.idea/
+.vscode/
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# bats output
+test/.bats/
