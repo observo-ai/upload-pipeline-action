@@ -19,7 +19,7 @@ branding:
 
 inputs:
   api-key:
-    description: "Observo account-scoped API key. Pass via secrets, e.g. ${{ secrets.OBSERVO_API_KEY }}."
+    description: "Observo account-scoped API key. Pass via secrets, e.g. secrets.OBSERVO_API_KEY."
     required: true
   project-id:
     description: "Observo project UUID OR short project code (e.g. DEMO). Both accepted server-side."
